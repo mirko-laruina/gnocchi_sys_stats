@@ -46,13 +46,14 @@ if __name__ == '__main__':
     while True:
         try:
             cpu_util = psutil.cpu_percent()
-            mem_util = psutil.virtual_memory()[3]
+            mem = psutil.virtual_memory()
+            mem_util = float(mem[3])/mem[0]*100
             gnocchi.send_measure(metrics['cpu'], cpu_util)
             # virtual_memory()[3] returns the currently used memory
             gnocchi.send_measure(metrics['memory'], mem_util)
 
             if args.verbose:
-                print("Pushed new measurement. CPU: %f%% Memory: %d"%(cpu_util, mem_util))
+                print("Pushed new measurement. CPU: %f%% Memory: %f%%"%(cpu_util, mem_util))
                 
         except gnocchi_api.AuthException:
             print("Authentication token has expired")
