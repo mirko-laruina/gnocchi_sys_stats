@@ -47,13 +47,16 @@ class GnocchiAPI:
 
         return r.json()['metrics']
 
-    def send_measure(self, metric_id, value, time = time()):
+    def send_measure(self, metric_id, value, timestamp=None):
         # Gnocchi returns ISO 8601 timestamps, but accepts different formats. Unix epoch is OK
+        if timestamp == None:
+            timestamp = time()
+        
         r = requests.post(
             self.base_url+"/v1/metric/"+metric_id+"/measures",
             headers=self.headers,
             json=[{
-                "timestamp": time,
+                "timestamp": timestamp,
                 "value": value
                 }]
             )
