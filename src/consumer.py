@@ -52,13 +52,6 @@ def plot(gnocchi, host_id, metric, granularity, resample, width=60):
     else:
         metric_id = metrics[metric]
 
-    measures = gnocchi.get_measures(metric_id, resample=resample, granularity=granularity)
-    
-    if verbose:
-        print(measures)
-   
-    data.update({m[0]:m[2] for m in measures})
-
     # This function is called periodically from FuncAnimation
     def animate(i, data):
         if data:
@@ -88,6 +81,7 @@ def plot(gnocchi, host_id, metric, granularity, resample, width=60):
         plt.title('%s for machine %s (every %d seconds)' % (metric, host_id, granularity))
         plt.ylabel('CPU load (%)')
 
+    animate(0, data)
     # Set up plot to call animate() function periodically
     ani = animation.FuncAnimation(fig, animate, fargs=(data,), interval=granularity*1000)
     plt.show()
