@@ -38,7 +38,7 @@ def list_resources(gnocchi):
     for res in gnocchi.list_resources():
         print(res['id'], ', '.join(res['metrics'].keys()))
 
-def plot(gnocchi, hosts, metric, granularity, resample, width=60):
+def plot(gnocchi, hosts, metric, granularity, resample, aggregation, width=60):
     # Create figure for plotting
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1)
@@ -61,9 +61,9 @@ def plot(gnocchi, hosts, metric, granularity, resample, width=60):
         for host_id in hosts:
             data = hosts_data[host_id]
             if data:
-                measures = gnocchi.get_measures(metrics[host_id], resample=resample, granularity=granularity, start=sorted(list(data.keys()))[-1], refresh=True)
+                measures = gnocchi.get_measures(metrics[host_id], resample=resample, granularity=granularity, start=sorted(list(data.keys()))[-1], aggregation=aggregation, refresh=True)
             else:
-                measures = gnocchi.get_measures(metrics[host_id], resample=resample, granularity=granularity, refresh=True)
+                measures = gnocchi.get_measures(metrics[host_id], resample=resample, granularity=granularity, aggregation=aggregation, refresh=True)
 
             if verbose:
                 print(measures)
@@ -102,6 +102,7 @@ if __name__ == '__main__':
     parser.add_argument("-g", "--granularity",  type=str, default="second", help="Granularity (only plot). Choices: second, minute, hour, day")
     parser.add_argument("-r", "--resample",  type=str, default=None, help="Resample measures to another interval. Format: 'Nu', N is a number, u is a unit ('s', 'm', 'h', 'd')")
     parser.add_argument("-m", "--metric",  type=str, default="cpu", help="Metric to show for the given host(s).")
+    parser.add_argument("-a", "--aggregation",  type=str, default="average", help="Aggregation method.")
     parser.add_argument("-u", "--url", type=str, default='http://252.3.47.9:8041/', help="Gnocchi listening URL")
     parser.add_argument("-v", "--verbose", action="store_true", help="Show verbose output")
     args = parser.parse_args()
@@ -128,6 +129,7 @@ if __name__ == '__main__':
         hosts = args.args
         metric = args.metric
         gran_str = args.granularity
+        aggr = args.aggregation
         if args.resample:
             resample = parse_timedelta(args.resample)
         else:
@@ -139,7 +141,7 @@ if __name__ == '__main__':
             print("Unknown granularity: ", gran_str)
             exit(1)
 
-        plot(gnocchi, hosts, metric, gran, resample)
+        plot(gnocchi, hosts, metric, gran, resample, aggr)
     else:
         print("Unknown command: " + args.command[0])
         exit(1)
