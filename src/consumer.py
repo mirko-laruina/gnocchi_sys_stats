@@ -83,9 +83,11 @@ def plot(gnocchi, hosts, metric, granularity, resample, width=60):
         # Format plot
         # plt.xticks(rotation=45, ha='right')
         # plt.subplots_adjust(bottom=0.30)
-        plt.title('%s for machine %s (every %d seconds)' % (metric, host_id, granularity))
-        plt.ylabel('CPU load (%)')
+        plt.title('%s (every %d seconds)' % (metric, resample))
+        plt.ylabel('%s load (%%)' % metric)
+        plt.ylim(0, 100)
         plt.legend()
+        plt.grid()
 
     animate(0, hosts_data)
     # Set up plot to call animate() function periodically
