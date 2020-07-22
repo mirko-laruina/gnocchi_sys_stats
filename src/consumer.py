@@ -4,11 +4,12 @@ import argparse
 import psutil
 from time import sleep
 import os, sys
-import gnocchi_api
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from dateutil import parser as dateparser
 from datetime import tzinfo, timedelta, datetime, timezone
+
+import gnocchi_api
 
 verbose = False
 
@@ -27,6 +28,16 @@ UNITS = {
 }
 
 def parse_timedelta(s):
+    """
+    Parses a string in the format Nu, where N is a number and u is a unit.
+
+    The unit can be:
+     - 's' for seconds
+     - 'm' for minutes
+     - 'h' for hours
+     - 'd' for days
+    """
+
     if s[-1] not in UNITS:
         print("Invalid time delta format: ", s)
         exit(1)
@@ -39,11 +50,18 @@ def list_resources(gnocchi):
         print(res['id'], ', '.join(res['metrics'].keys()))
 
 def plot(gnocchi, hosts, metric, granularity, resample, aggregation, width=60):
+    """
+    Display a real-time plot of the given metric for the given hosts.
+    """
+
     # Create figure for plotting
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1)
+
+    # initialize the dictionary that will contain the data fetched from Gnocchi
     hosts_data = {host_id:{} for host_id in hosts}
 
+    # get metric UUID from Gnocchi
     metrics = {}
     for host_id in hosts:
         host_metrics = gnocchi.get_metrics_from_resource(host_id)
@@ -57,41 +75,60 @@ def plot(gnocchi, hosts, metric, granularity, resample, aggregation, width=60):
 
     # This function is called periodically from FuncAnimation
     def animate(i, hosts_data):
+        # clear the plot
         ax.clear()
+
         for host_id in hosts:
             data = hosts_data[host_id]
-            if data:
-                measures = gnocchi.get_measures(metrics[host_id], resample=resample, granularity=granularity, start=sorted(list(data.keys()))[-1], aggregation=aggregation, refresh=True)
+
+            if data: 
+                # if there is already some data, request only new information
+                # setting the "start" parameter to the timestamp of the last
+                # sample
+                last_timestamp = sorted(list(data.keys()))[-1]
+                measures = gnocchi.get_measures(metrics[host_id], resample=resample, granularity=granularity, start=last_timestamp, aggregation=aggregation, refresh=True)
             else:
+                # otherwise query for any data
                 measures = gnocchi.get_measures(metrics[host_id], resample=resample, granularity=granularity, aggregation=aggregation, refresh=True)
 
             if verbose:
                 print(measures)
 
+            # update the data dictionary with new measures
+            # (a dictionary is used to automatically fix conflicts)
             data.update({m[0]:m[2] for m in measures})
 
-            # Limit x and y lists to width items
+            # Sort in ascending timestamp order and limit the number of items
+            # to `width`
             keys = sorted(list(data.keys())[-width:])
             data = {k:data[k] for k in keys}
 
-            # Draw x and y lists
+            # Compute x axis values
+            # (distance in seconds from now to the timestamp of the measure)
             now = datetime.now(timezone.utc)
             xs = [(dateparser.parse(k)-now).total_seconds() for k in keys]
+
+            # Get y axis values
             ys = [data[k] for k in keys]
+
+            # Plot the line of this host
             ax.plot(xs, ys, label=host_id)
 
         # Format plot
-        # plt.xticks(rotation=45, ha='right')
-        # plt.subplots_adjust(bottom=0.30)
         plt.title('%s (every %d seconds)' % (metric, resample))
         plt.ylabel('%s load (%%)' % metric)
         plt.ylim(0, 100)
         plt.legend()
         plt.grid()
 
+    # call animate the first time to initialize the plot
     animate(0, hosts_data)
+
     # Set up plot to call animate() function periodically
+    # (every `granularity` seconds)
     ani = animation.FuncAnimation(fig, animate, fargs=(hosts_data,), interval=granularity*1000)
+
+    # show plot
     plt.show()
 
 if __name__ == '__main__':
@@ -109,39 +146,42 @@ if __name__ == '__main__':
 
     verbose = args.verbose
 
-    # Commands:
-    # - list: shows available hosts (aka hosts)
-    # - plot <host_id> <metric> <granularity=second>: plots real-time plot
-    #[- distribution: plots distribution of load among all hosts (?)]
-
     gnocchi = gnocchi_api.GnocchiAPI(args.url, args.token)
 
     if verbose:
         print("Command:", args.command)
         print("Arguments:", args.args)
 
-    if args.command[0] == 'list':
-        list_resources(gnocchi)
-    elif args.command[0] == 'plot':
-        if not args.args:
-            print("Usage: python3 consumer.py plot <hostid> [<other_host>...]", file=sys.stderr)
-            exit(1)
-        hosts = args.args
-        metric = args.metric
-        gran_str = args.granularity
-        aggr = args.aggregation
-        if args.resample:
-            resample = parse_timedelta(args.resample)
-        else:
-            resample = None
-        
-        if gran_str in GRANULARITIES:
-            gran = GRANULARITIES[gran_str]
-        else:
-            print("Unknown granularity: ", gran_str)
-            exit(1)
+    # catch AuthException to print nice error message
+    try: 
+        if args.command[0] == 'list':
+            list_resources(gnocchi)
+        elif args.command[0] == 'plot':
+            if not args.args:
+                print("No host provided. Run with -h/--help to check usage", file=sys.stderr)
+                exit(1)
 
-        plot(gnocchi, hosts, metric, gran, resample, aggr)
-    else:
-        print("Unknown command: " + args.command[0])
+            hosts = args.args
+            gran_str = args.granularity
+
+            # parse the resample time
+            if args.resample:
+                resample = parse_timedelta(args.resample)
+            else:
+                resample = None
+            
+            # parse the granularity
+            if gran_str in GRANULARITIES:
+                gran = GRANULARITIES[gran_str]
+            else:
+                print("Unknown granularity: ", gran_str)
+                exit(1)
+
+            # start plotting
+            plot(gnocchi, hosts, args.metric, gran, resample, args.aggregation)
+        else:
+            print("Unknown command: " + args.command[0])
+            exit(1)
+    except gnocchi_api.AuthException:
+        print("Authentication token expired")
         exit(1)
