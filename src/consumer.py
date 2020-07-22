@@ -148,7 +148,7 @@ if __name__ == '__main__':
     parser.add_argument("-g", "--granularity",  type=str, default="second", choices=["second", "minute", "hour", "day"], help="Granularity (only plot). Choices: second, minute, hour, day")
     parser.add_argument("-r", "--resample",  type=str, default=None, help="Resample measures to another interval. Format: 'Nu', N is a number, u is a unit ('s', 'm', 'h', 'd')")
     parser.add_argument("-m", "--metric",  type=str, default="cpu", help="Metric to show for the given host(s).")
-    parser.add_argument("-a", "--aggregation",  type=str, default="average", help="Aggregation method.")
+    parser.add_argument("-a", "--aggregation",  type=str, default="mean", help="Aggregation method.")
     parser.add_argument("-u", "--url", type=str, default='http://252.3.47.9:8041/', help="Gnocchi listening URL")
     parser.add_argument("--user_id", type=str, default=DEFAULT_USER_ID, help="Openstack User ID")
     parser.add_argument("--project_id", type=str, default=DEFAULT_PROJECT_ID, help="Openstack project ID")
