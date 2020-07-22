@@ -100,7 +100,7 @@ def plot(gnocchi, hosts, metric, granularity, resample, aggregation, width=60):
 
             # update the data dictionary with new measures
             # (a dictionary is used to automatically fix conflicts)
-            data.update({m[0]:m[2] for m in measures})
+            data.update({ts:val for ts, gran, val in measures})
 
             # Sort in ascending timestamp order and limit the number of items
             # to `width`
