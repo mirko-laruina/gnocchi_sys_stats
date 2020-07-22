@@ -47,7 +47,7 @@ def parse_timedelta(s):
         exit(1)
     else:
         unit = UNITS[s[-1]]
-        return int(s[:-1]*unit)
+        return int(s[:-1])*unit
 
 def list_resources(gnocchi):
     for res in gnocchi.list_resources():
