@@ -104,7 +104,7 @@ class GnocchiAPI:
         """
 
         r = requests.get(self.base_url + '/v1/resource/generic', headers=self.headers)
-        
+
         if r.status_code == 200:
             return r.json()
         elif r.status_code == 401:
@@ -128,8 +128,13 @@ class GnocchiAPI:
             Return only measures at the given granularity
          - resample: int
             Resample and aggregate on the given granularity
+         - aggregation: str
+            Aggregation method (e.g. mean, max, min, count, ...)
          - start: floating number (UNIX epoch) or an ISO8601 formated timestamp
             Return all measures after the given time
+
+        Result:
+            List of tuples (timestamp, granularity, value)
         """
 
         r = requests.get(self.base_url + '/v1/metric/' + metric +'/measures', params=kwargs, headers=self.headers)

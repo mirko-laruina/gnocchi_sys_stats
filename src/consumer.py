@@ -40,6 +40,7 @@ def parse_timedelta(s):
      - 'm' for minutes
      - 'h' for hours
      - 'd' for days
+    E.g. "1s", "5m", ...
     """
 
     if s[-1] not in UNITS:
@@ -136,11 +137,11 @@ def plot(gnocchi, hosts, metric, granularity, resample, aggregation, width=60):
     plt.show()
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Gnocchi producer for system usage informations")
-    parser.add_argument("command",  type=str, nargs=1, help="Command, one of: list, plot")
-    parser.add_argument("args",  type=str, nargs='*', help="Depends on command. `list` has no arguments, `plot` has two arguments: host_id and granulatity (one of second, minute, hour, day)")
+    parser = argparse.ArgumentParser(description="Gnocchi consumer for system usage informations")
+    parser.add_argument("command",  type=str, nargs=1, choices=["list", "plot"], help="Command, one of: list, plot")
+    parser.add_argument("args",  type=str, nargs='*', help="Depends on command. `list` has no arguments, `plot` gets a list of host_ids (at least one).")
     parser.add_argument("-t", "--token",  type=str, required=True, help="Authentication token")
-    parser.add_argument("-g", "--granularity",  type=str, default="second", help="Granularity (only plot). Choices: second, minute, hour, day")
+    parser.add_argument("-g", "--granularity",  type=str, default="second", choices=["second", "minute", "hour", "day"], help="Granularity (only plot). Choices: second, minute, hour, day")
     parser.add_argument("-r", "--resample",  type=str, default=None, help="Resample measures to another interval. Format: 'Nu', N is a number, u is a unit ('s', 'm', 'h', 'd')")
     parser.add_argument("-m", "--metric",  type=str, default="cpu", help="Metric to show for the given host(s).")
     parser.add_argument("-a", "--aggregation",  type=str, default="average", help="Aggregation method.")
