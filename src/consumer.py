@@ -13,6 +13,10 @@ import gnocchi_api
 
 verbose = False
 
+# hardcoded project_id/user_id for development
+DEFAULT_PROJECT_ID = '3d22f640-84db-40ce-af49-44468443234f'
+DEFAULT_USER_ID = '3d22f640-84db-40ce-af49-44468443234f'
+
 GRANULARITIES = {
     'second': 1,
     'minute': 60,
@@ -141,12 +145,15 @@ if __name__ == '__main__':
     parser.add_argument("-m", "--metric",  type=str, default="cpu", help="Metric to show for the given host(s).")
     parser.add_argument("-a", "--aggregation",  type=str, default="average", help="Aggregation method.")
     parser.add_argument("-u", "--url", type=str, default='http://252.3.47.9:8041/', help="Gnocchi listening URL")
+    parser.add_argument("--user_id", type=str, default=DEFAULT_USER_ID, help="Openstack User ID")
+    parser.add_argument("--project_id", type=str, default=DEFAULT_PROJECT_ID, help="Openstack project ID")
     parser.add_argument("-v", "--verbose", action="store_true", help="Show verbose output")
     args = parser.parse_args()
 
     verbose = args.verbose
 
-    gnocchi = gnocchi_api.GnocchiAPI(args.url, args.token)
+    gnocchi = gnocchi_api.GnocchiAPI(args.url, args.token, 
+            args.project_id, args.user_id)
 
     if verbose:
         print("Command:", args.command)

@@ -25,21 +25,25 @@ class GnocchiAPI:
 
     def get_metrics_from_resource(self, resource_id):
         r = requests.get(self.base_url + '/v1/resource/generic/' + resource_id, headers=self.headers)
+
         if r.status_code == 404:
             # we need to create the resource
-            r = requests.post(self.base_url + '/v1/resource/generic', headers=self.headers, json={
-                    "id": resource_id,
-                    "project_id": '3d22f640-84db-40ce-af49-44468443234f',
-                    "user_id": '3d22f640-84db-40ce-af49-44468443234f',
-                    "metrics": {
-                        "cpu": {
-                            "archive_policy_name": "high"
-                        },
-                        "memory": {
-                            "archive_policy_name": "high"
+            r = requests.post(self.base_url + '/v1/resource/generic', 
+                    headers=self.headers, 
+                    json={
+                        "id": resource_id,
+                        "project_id": self.project_id,
+                        "user_id": self.user_id,
+                        "metrics": {
+                            "cpu": {
+                                "archive_policy_name": "high"
+                            },
+                            "memory": {
+                                "archive_policy_name": "high"
+                            }
                         }
-                    }
-                } )
+                    } 
+            )
         elif r.status_code == 401:
             raise AuthException()
         elif r.status_code // 100 != 2:
