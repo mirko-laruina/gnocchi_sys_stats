@@ -120,7 +120,11 @@ def plot(gnocchi, hosts, metric, granularity, resample, aggregation, width=60):
             ax.plot(xs, ys, label=host_id)
 
         # Format plot
-        plt.title('%s (every %d seconds)' % (metric, resample))
+        plt.title('%s (every %d seconds)' % (
+            metric, 
+            resample if resample else granularity
+        ))
+
         plt.ylabel('%s load (%%)' % metric)
         plt.ylim(0, 100)
         plt.legend()
