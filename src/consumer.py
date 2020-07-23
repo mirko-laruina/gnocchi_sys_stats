@@ -93,8 +93,13 @@ def plot(gnocchi, hosts, metric, granularity, resample, aggregation, width=60):
                 last_timestamp = sorted(list(data.keys()))[-1]
                 measures = gnocchi.get_measures(metrics[host_id], resample=resample, granularity=granularity, start=last_timestamp, aggregation=aggregation, refresh=True)
             else:
-                # otherwise query for any data
-                measures = gnocchi.get_measures(metrics[host_id], resample=resample, granularity=granularity, aggregation=aggregation, refresh=True)
+                # otherwise query for any data in our window
+                if resample:
+                    from_time = time() - width*resample
+                else:
+                    from_time = time() - width*granularity
+                    
+                measures = gnocchi.get_measures(metrics[host_id], resample=resample, granularity=granularity, aggregation=aggregation, start=from_time, refresh=True)
 
             if verbose:
                 print(measures)
