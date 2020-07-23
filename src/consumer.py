@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from dateutil import parser as dateparser
 from datetime import tzinfo, timedelta, datetime, timezone
+from time import time
 
 import gnocchi_api
 
@@ -54,6 +55,7 @@ def list_resources(gnocchi):
     for res in gnocchi.list_resources():
         print(res['id'], ', '.join(res['metrics'].keys()))
 
+
 def plot(gnocchi, hosts, metric, granularity, resample, aggregation, width=60):
     """
     Display a real-time plot of the given metric for the given hosts.
@@ -98,7 +100,7 @@ def plot(gnocchi, hosts, metric, granularity, resample, aggregation, width=60):
                     from_time = time() - width*resample
                 else:
                     from_time = time() - width*granularity
-                    
+
                 measures = gnocchi.get_measures(metrics[host_id], resample=resample, granularity=granularity, aggregation=aggregation, start=from_time, refresh=True)
 
             if verbose:
@@ -145,9 +147,56 @@ def plot(gnocchi, hosts, metric, granularity, resample, aggregation, width=60):
     # show plot
     plt.show()
 
+def dump_data(gnocchi, host_id, metric, granularity, resample, aggregation):
+    """
+    Print measures in the command line.
+    """
+
+    # we don't want anything before now
+    last_timestamp = time()
+
+    # get the uuid of the metric from the resource
+    host_metrics = gnocchi.get_metrics_from_resource(host_id)
+
+    if metric not in host_metrics:
+        print("Unavailable metric %s for host %s" % (metric, host_id))
+        print("Available metrics: ", host_metrics)
+        exit(1)
+    else:
+        metric_id = host_metrics[metric]
+
+    try: # catch KeyboardInterrupt
+        # loop until interrupted
+        while True:
+            # fetch measures from last_timestamp onwards
+            measures = gnocchi.get_measures(metric_id, resample=resample, granularity=granularity, start=last_timestamp, aggregation=aggregation, refresh=True)
+
+            # sort by increasing timestamp
+            measures.sort(key=lambda m: m[0])
+
+            # print each measure I received
+            for ts, gran, val in measures:
+                # skip duplicate measures
+                # if not a string then it is the time value I set earlier 
+                # (which is a float) therefore I have no measure and I do not 
+                # need to skip
+                if isinstance(last_timestamp, str) and ts <= last_timestamp:
+                    continue
+                
+                print(f"{ts}: {val}%")
+                
+                # update the last timestamp I've seen
+                last_timestamp = ts
+            
+            # wait for `granularity` seconds
+            sleep(granularity)
+    except KeyboardInterrupt:
+        pass
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Gnocchi consumer for system usage informations")
-    parser.add_argument("command",  type=str, nargs=1, choices=["list", "plot"], help="Command, one of: list, plot")
+    parser.add_argument("command",  type=str, nargs=1, choices=["list", "plot", "dump"], help="Command, one of: list, plot, dump")
     parser.add_argument("args",  type=str, nargs='*', help="Depends on command. `list` has no arguments, `plot` gets a list of host_ids (at least one).")
     parser.add_argument("-t", "--token",  type=str, required=True, help="Authentication token")
     parser.add_argument("-g", "--granularity",  type=str, default="second", choices=["second", "minute", "hour", "day"], help="Granularity (only plot). Choices: second, minute, hour, day")
@@ -169,6 +218,21 @@ if __name__ == '__main__':
         print("Command:", args.command)
         print("Arguments:", args.args)
 
+    gran_str = args.granularity
+    
+    # parse the resample time
+    if args.resample:
+        resample = parse_timedelta(args.resample)
+    else:
+        resample = None
+    
+    # parse the granularity
+    if gran_str in GRANULARITIES:
+        gran = GRANULARITIES[gran_str]
+    else:
+        print("Unknown granularity: ", gran_str)
+        exit(1)
+
     # catch AuthException to print nice error message
     try: 
         if args.command[0] == 'list':
@@ -179,23 +243,14 @@ if __name__ == '__main__':
                 exit(1)
 
             hosts = args.args
-            gran_str = args.granularity
-
-            # parse the resample time
-            if args.resample:
-                resample = parse_timedelta(args.resample)
-            else:
-                resample = None
-            
-            # parse the granularity
-            if gran_str in GRANULARITIES:
-                gran = GRANULARITIES[gran_str]
-            else:
-                print("Unknown granularity: ", gran_str)
-                exit(1)
 
             # start plotting
             plot(gnocchi, hosts, args.metric, gran, resample, args.aggregation)
+        elif args.command[0] == 'dump':
+            if not args.args or len(args.args) != 1:
+                print("You need to provide one host (and one only). Run with -h/--help to check usage", file=sys.stderr)
+                exit(1)
+            dump_data(gnocchi, args.args[0], args.metric, gran, resample, args.aggregation)
         else:
             print("Unknown command: " + args.command[0])
             exit(1)
